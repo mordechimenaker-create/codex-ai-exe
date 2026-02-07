@@ -1,6 +1,6 @@
 {
   "name": "codex-ai-terminal",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Electron GUI: AI chat on top, WSL terminal below",
   "main": "src/main.js",
   "author": "",
@@ -29,7 +29,9 @@
       "package.json"
     ],
     "win": {
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "publish": [
       {
