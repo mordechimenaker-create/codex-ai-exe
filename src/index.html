@@ -11,14 +11,17 @@
     <div class="app">
       <header class="header">
         <div class="title">Codex AI Terminal</div>
-        <div class="subtitle">Chat above, WSL below</div>
-        <div class="status" id="statusLine">Ready</div>
-        <div class="status meta" id="statusMeta">WSL: Unknown · --:--</div>
+        <div class="subtitle">צ'אט למעלה, טרמינל WSL למטה</div>
+        <div class="status" id="statusLine">מוכן</div>
+        <div class="status meta" id="statusMeta">WSL: לא ידוע · --:--</div>
         <div class="actions">
-          <button id="toggleTheme" class="ghost">Theme</button>
-          <button id="toggleDensity" class="ghost">Density</button>
-          <button id="jumpTerminal" class="ghost">Terminal</button>
-          <button id="startImprove" class="send">Improve x5</button>
+          <button id="toggleTheme" class="ghost">ערכת צבע</button>
+          <button id="toggleDensity" class="ghost">צפיפות</button>
+          <button id="jumpTerminal" class="ghost">טרמינל</button>
+          <button id="startImprove" class="send">שפר x5</button>
+          <button id="toggleRtl" class="ghost" aria-label="Toggle RTL">RTL</button>
+          <button id="fontDown" class="ghost" aria-label="Decrease font size">א-</button>
+          <button id="fontUp" class="ghost" aria-label="Increase font size">א+</button>
         </div>
       </header>
 
@@ -26,16 +29,23 @@
         <div class="chat-row">
           <div id="chat" class="chat"></div>
           <aside class="side-panel">
-            <div class="side-title">Command History</div>
+            <div class="side-title">פעולות מהירות</div>
+            <div class="quick-actions">
+              <button class="ghost quick" data-task="עדכן והתקן עדכונים (sudo apt update && sudo apt upgrade -y)">עדכון מערכת</button>
+              <button class="ghost quick" data-task="נקה קבצים זמניים ומטמון בצורה בטוחה">ניקוי קבצים</button>
+              <button class="ghost quick" data-task="בדוק שימוש בדיסק והצג את התיקיות הגדולות ביותר">בדיקת דיסק</button>
+              <button class="ghost quick" data-task="בדוק חיבור אינטרנט ופתרון בעיות DNS">בדיקת רשת</button>
+            </div>
+            <div class="side-title">היסטוריית פקודות</div>
             <div id="cmdHistory" class="side-list"></div>
           </aside>
         </div>
         <div class="composer">
           <div class="controls">
-            <button id="clearChat" class="ghost">Clear</button>
-            <button id="send" class="send">Send</button>
+            <button id="clearChat" class="ghost">נקה צ'אט</button>
+            <button id="send" class="send">שלח</button>
           </div>
-          <textarea id="prompt" class="prompt" rows="3" placeholder="Ask Codex..."></textarea>
+          <textarea id="prompt" class="prompt" rows="3" placeholder="כתוב מה אתה רוצה שאעשה..."></textarea>
         </div>
       </section>
 
@@ -47,13 +57,24 @@
 
     <div id="consentModal" class="modal hidden" aria-hidden="true">
       <div class="modal-card">
-        <div class="modal-title">Allow Auto-Run?</div>
+        <div class="modal-title">לאשר הרצה אוטומטית?</div>
         <div class="modal-body">
-          The AI can run terminal commands automatically. Allow this?
+          ה‑AI יכול להריץ פקודות בטרמינל באופן אוטומטי. לאשר?
         </div>
         <div class="modal-actions">
-          <button id="consentAllow" class="send">Allow</button>
-          <button id="consentDecline" class="ghost">Decline</button>
+          <button id="consentAllow" class="send">אשר</button>
+          <button id="consentDecline" class="ghost">דחה</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="dangerModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-title">אישור נוסף לפקודה מסוכנת</div>
+        <div class="modal-body" id="dangerText"></div>
+        <div class="modal-actions">
+          <button id="dangerAllow" class="send">הרץ בכל זאת</button>
+          <button id="dangerDecline" class="ghost">בטל</button>
         </div>
       </div>
     </div>

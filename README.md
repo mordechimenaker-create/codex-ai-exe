@@ -64,8 +64,10 @@ The app includes an “Improve x5” button that runs a **max 5 iteration** loop
 
 - `git`, `gh` (GitHub CLI), `codex` available in WSL
 - `GITHUB_TOKEN` environment variable set (with repo access)
+- Optional: set `REPO_PATH` to the Windows path of the repo (e.g., `C:\codex-ai-exe`)
 
 ### Notes
 
 - The loop stops on any failure.
 - It will not proceed if the repo has uncommitted changes.
+- The app stores `improve.sh` in the user data directory when packaged.

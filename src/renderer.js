@@ -11,6 +11,14 @@ const toggleTheme = document.getElementById("toggleTheme");
 const toggleDensity = document.getElementById("toggleDensity");
 const jumpTerminal = document.getElementById("jumpTerminal");
 const startImprove = document.getElementById("startImprove");
+const toggleRtl = document.getElementById("toggleRtl");
+const fontDown = document.getElementById("fontDown");
+const fontUp = document.getElementById("fontUp");
+const dangerModal = document.getElementById("dangerModal");
+const dangerText = document.getElementById("dangerText");
+const dangerAllow = document.getElementById("dangerAllow");
+const dangerDecline = document.getElementById("dangerDecline");
+const quickButtons = document.querySelectorAll(".quick-actions .quick");
 const consentModal = document.getElementById("consentModal");
 const consentAllow = document.getElementById("consentAllow");
 const consentDecline = document.getElementById("consentDecline");
@@ -105,11 +113,40 @@ function setMeta(text) {
   }
 }
 
+const FONT_MIN = 12;
+const FONT_MAX = 20;
+const FONT_STEP = 1;
+
+function applyFontSize(size) {
+  const app = document.querySelector(".app");
+  if (app) {
+    app.style.fontSize = `${size}px`;
+  }
+  terminal.setOption("fontSize", size);
+  fitAddon.fit();
+}
+
+function getFontSize() {
+  const raw = localStorage.getItem("fontSize");
+  const parsed = raw ? Number(raw) : 14;
+  if (Number.isFinite(parsed)) {
+    return Math.min(FONT_MAX, Math.max(FONT_MIN, parsed));
+  }
+  return 14;
+}
+
+function setFontSize(size) {
+  const clamped = Math.min(FONT_MAX, Math.max(FONT_MIN, size));
+  localStorage.setItem("fontSize", String(clamped));
+  applyFontSize(clamped);
+}
+
 const history = [];
 const MAX_HISTORY = 20;
 const pendingResponses = new Map();
 const commandHistory = [];
 const MAX_COMMAND_HISTORY = 30;
+let pendingDangerCommand = null;
 
 function pushHistory(role, text) {
   history.push({ role, text });
@@ -135,7 +172,7 @@ async function sendPrompt() {
   pushHistory("user", prompt);
 
   sendBtn.disabled = true;
-  setStatus("Thinking...");
+  setStatus("חושב...");
   const context = buildHistoryPrompt();
   const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const messageEl = appendMessage("ai", "", "Running");
@@ -164,7 +201,11 @@ function maybeAutoRun(text) {
 
   const consent = localStorage.getItem("autoRunConsent");
   if (consent === "allowed") {
-    runCommand(command);
+    if (isDangerous(command)) {
+      showDangerModal(command);
+    } else {
+      runCommand(command);
+    }
     return;
   }
   if (consent === "denied") {
@@ -242,6 +283,26 @@ function runCommand(command) {
   }
 }
 
+function isDangerous(command) {
+  return /(rm\s+-rf\s+\/|mkfs|dd\s+if=|:?\(\)\s*{\s*:\|:\s*&\s*}\s*;|shutdown|reboot|poweroff|halt|init\s+0)/i.test(
+    command
+  );
+}
+
+function showDangerModal(command) {
+  pendingDangerCommand = command;
+  if (dangerText) {
+    dangerText.textContent = `הפקודה נראית מסוכנת: ${command}`;
+  }
+  dangerModal?.classList.toggle("hidden", false);
+  dangerModal?.setAttribute("aria-hidden", "false");
+}
+
+function hideDangerModal() {
+  dangerModal?.classList.toggle("hidden", true);
+  dangerModal?.setAttribute("aria-hidden", "true");
+}
+
 function recordCommand(command) {
   if (!cmdHistoryEl) {
     return;
@@ -280,7 +341,11 @@ consentAllow.addEventListener("click", () => {
   localStorage.setItem("autoRunConsent", "allowed");
   showConsentModal(false);
   if (pendingCommand) {
-    runCommand(pendingCommand);
+    if (isDangerous(pendingCommand)) {
+      showDangerModal(pendingCommand);
+    } else {
+      runCommand(pendingCommand);
+    }
     pendingCommand = null;
   }
 });
@@ -289,6 +354,19 @@ consentDecline.addEventListener("click", () => {
   localStorage.setItem("autoRunConsent", "denied");
   pendingCommand = null;
   showConsentModal(false);
+});
+
+dangerAllow?.addEventListener("click", () => {
+  hideDangerModal();
+  if (pendingDangerCommand) {
+    runCommand(pendingDangerCommand);
+    pendingDangerCommand = null;
+  }
+});
+
+dangerDecline?.addEventListener("click", () => {
+  pendingDangerCommand = null;
+  hideDangerModal();
 });
 
 window.api.onAiChunk(({ id, chunk }) => {
@@ -317,12 +395,13 @@ window.api.onAiDone(({ id, text, error }) => {
       entry.element.classList.add("error");
       const badge = entry.element.querySelector(".badge");
       if (badge) {
-        badge.textContent = "Error";
+        badge.textContent = "שגיאה";
       }
+      setStatus("שגיאה");
     } else {
       const badge = entry.element.querySelector(".badge");
       if (badge) {
-        badge.textContent = "Done";
+        badge.textContent = "בוצע";
       }
     }
     applyCommandHighlight(entry.element, finalText);
@@ -330,17 +409,22 @@ window.api.onAiDone(({ id, text, error }) => {
     maybeAutoRun(finalText);
     pendingResponses.delete(id);
   } else if (error) {
-    const el = appendMessage("ai", error, "Error");
+    const el = appendMessage("ai", error, "שגיאה");
     el.classList.add("error");
+    setStatus("שגיאה");
   }
   sendBtn.disabled = false;
-  setStatus("Ready");
+  if (statusLine && statusLine.textContent === "Error") {
+    setTimeout(() => setStatus("מוכן"), 1500);
+  } else {
+    setStatus("מוכן");
+  }
   inputEl.focus();
 });
 
 window.api.onAppWarning((msg) => {
   if (msg) {
-    appendMessage("ai", msg, "Warn");
+    appendMessage("ai", msg, "אזהרה");
   }
 });
 
@@ -354,8 +438,8 @@ if (clearBtn) {
   clearBtn.addEventListener("click", () => {
     chatEl.innerHTML = "";
     history.splice(0, history.length);
-    setStatus("Cleared");
-    setTimeout(() => setStatus("Ready"), 800);
+    setStatus("נוקה");
+    setTimeout(() => setStatus("מוכן"), 800);
   });
 }
 
@@ -385,7 +469,7 @@ function restoreSession() {
 
 window.addEventListener("beforeunload", saveSession);
 restoreSession();
-setStatus("Ready");
+setStatus("מוכן");
 
 if (toggleTheme) {
   toggleTheme.addEventListener("click", () => {
@@ -415,33 +499,57 @@ if (jumpTerminal) {
   });
 }
 
+if (toggleRtl) {
+  toggleRtl.addEventListener("click", () => {
+    const current = document.body.dataset.direction || "ltr";
+    const next = current === "rtl" ? "ltr" : "rtl";
+    document.body.dataset.direction = next;
+    localStorage.setItem("direction", next);
+  });
+}
+
+if (fontDown) {
+  fontDown.addEventListener("click", () => {
+    setFontSize(getFontSize() - FONT_STEP);
+  });
+}
+
+if (fontUp) {
+  fontUp.addEventListener("click", () => {
+    setFontSize(getFontSize() + FONT_STEP);
+  });
+}
+
 if (startImprove) {
   startImprove.addEventListener("click", () => {
-    appendMessage("ai", "Starting improve loop (max 5 iterations)...", "Info");
+    appendMessage("ai", "מתחיל לולאת שיפור (עד 5 סבבים)...", "Info");
     window.api.startImprove(5);
   });
 }
 
 window.api.onImproveLog((msg) => {
   if (msg) {
-    appendMessage("ai", msg.trim(), "Log");
+    appendMessage("ai", msg.trim(), "לוג");
   }
 });
 
 window.api.onImproveDone((msg) => {
   if (msg) {
-    appendMessage("ai", msg, "Done");
+    appendMessage("ai", msg, "בוצע");
   }
 });
 
 function restoreUiPrefs() {
   const theme = localStorage.getItem("theme") || "dark";
   document.body.dataset.theme = theme;
+  const direction = localStorage.getItem("direction") || "rtl";
+  document.body.dataset.direction = direction;
   const density = localStorage.getItem("density") || "comfortable";
   const app = document.querySelector(".app");
   if (app && density === "compact") {
     app.classList.add("compact");
   }
+  setFontSize(getFontSize());
 }
 
 function updateClock() {
@@ -454,6 +562,52 @@ function updateClock() {
 restoreUiPrefs();
 updateClock();
 setInterval(updateClock, 1000);
+
+quickButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const task = btn.getAttribute("data-task") || "";
+    if (!task) {
+      return;
+    }
+    inputEl.value = task;
+    sendPrompt();
+  });
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!event.ctrlKey) {
+    return;
+  }
+  const key = event.key.toLowerCase();
+  if (key === "enter") {
+    event.preventDefault();
+    sendPrompt();
+  } else if (key === "l") {
+    event.preventDefault();
+    clearBtn?.click();
+  } else if (key === "k") {
+    event.preventDefault();
+    inputEl.focus();
+  } else if (key === "j") {
+    event.preventDefault();
+    jumpTerminal?.click();
+  } else if (key === "d") {
+    event.preventDefault();
+    toggleDensity?.click();
+  } else if (key === "t") {
+    event.preventDefault();
+    toggleTheme?.click();
+  } else if (key === "r" && event.shiftKey) {
+    event.preventDefault();
+    toggleRtl?.click();
+  } else if (key === "+" || key === "=") {
+    event.preventDefault();
+    fontUp?.click();
+  } else if (key === "-" || key === "_") {
+    event.preventDefault();
+    fontDown?.click();
+  }
+});
 
 function applyCommandHighlight(wrapper, text) {
   if (!wrapper || !text) {

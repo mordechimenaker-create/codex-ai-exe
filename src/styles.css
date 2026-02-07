@@ -3,6 +3,7 @@
   --panel: #141621;
   --panel-2: #10121a;
   --accent: #4ec9b0;
+  --accent-strong: #7cf2d5;
   --text: #e6e8ee;
   --muted: #9aa3b2;
   --border: #24283a;
@@ -21,6 +22,21 @@ body {
   overflow: hidden;
 }
 
+body[data-direction="rtl"] .chat,
+body[data-direction="rtl"] .composer,
+body[data-direction="rtl"] .side-panel {
+  direction: rtl;
+  text-align: right;
+}
+
+body[data-direction="rtl"] .label {
+  flex-direction: row-reverse;
+}
+
+body[data-direction="rtl"] .actions {
+  justify-content: flex-start;
+}
+
 body[data-theme="light"] {
   --bg: #f5f7fb;
   --panel: #ffffff;
@@ -34,6 +50,10 @@ body[data-theme="light"] {
 
 .app.compact {
   font-size: 12px;
+}
+
+.app {
+  font-size: 14px;
 }
 
 .app.compact .chat,
@@ -84,6 +104,7 @@ body[data-theme="light"] {
 .actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .chat-panel,
@@ -118,6 +139,10 @@ body[data-theme="light"] {
   border-radius: 12px;
   background: var(--panel-2);
   border: 1px solid transparent;
+}
+
+.msg:focus-within {
+  outline: 2px solid rgba(124, 242, 213, 0.4);
 }
 
 .msg.user {
@@ -173,6 +198,16 @@ body[data-theme="light"] {
   text-transform: uppercase;
 }
 
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick {
+  text-align: right;
+}
+
 .side-list {
   overflow-y: auto;
   display: flex;
@@ -202,11 +237,14 @@ body[data-theme="light"] {
   font-size: 12px;
   color: var(--muted);
   margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .body {
   white-space: pre-wrap;
-  line-height: 1.4;
+  line-height: 1.6;
 }
 
 .composer {
@@ -240,6 +278,12 @@ body[data-theme="light"] {
   cursor: pointer;
 }
 
+.ghost:hover,
+.send:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(78, 201, 176, 0.15);
+}
+
 .send:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -253,6 +297,13 @@ body[data-theme="light"] {
   padding: 10px;
   border-radius: 12px;
   resize: none;
+}
+
+.prompt:focus,
+.ghost:focus,
+.send:focus {
+  outline: 2px solid rgba(124, 242, 213, 0.4);
+  outline-offset: 2px;
 }
 
 .terminal-header {
