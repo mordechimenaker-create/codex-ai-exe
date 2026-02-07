@@ -1,0 +1,43 @@
+{
+  "name": "codex-ai-terminal",
+  "version": "0.1.0",
+  "description": "Electron GUI: AI chat on top, WSL terminal below",
+  "main": "src/main.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0",
+    "@xterm/xterm": "^5.5.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "electron-updater": "^6.1.8"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.codex.ai.terminal",
+    "productName": "Codex AI Terminal",
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": ["nsis"]
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "mordechimenaker-create",
+        "repo": "codex-ai-exe",
+        "private": true
+      }
+    ]
+  }
+}
