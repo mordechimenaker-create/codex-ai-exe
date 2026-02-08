@@ -21,14 +21,26 @@ AUTO_MERGE=\${AUTO_MERGE:-"1"}
 
 log() { printf "%s\\n" "$*"; }
 
+if [[ -z "$GITHUB_REPO" ]]; then
+  GITHUB_REPO="mordechimenaker-create/codex-ai-exe"
+fi
+
+is_git_repo() {
+  git -C "$1" rev-parse --is-inside-work-tree >/dev/null 2>&1
+}
+
 if [[ -z "$REPO_PATH" ]]; then
-  if [[ -d "/mnt/c/codex-ai-exe" ]]; then
+  if is_git_repo "/home/mor/codex-ai-exe"; then
+    REPO_PATH="/home/mor/codex-ai-exe"
+  elif is_git_repo "/mnt/c/codex-ai-exe"; then
     REPO_PATH="/mnt/c/codex-ai-exe"
   fi
 fi
 
-if [[ -z "$GITHUB_REPO" ]]; then
-  GITHUB_REPO="mordechimenaker-create/codex-ai-exe"
+if [[ -n "$REPO_PATH" && ! $(is_git_repo "$REPO_PATH") ]]; then
+  log "REPO_PATH is not a git repo: $REPO_PATH"
+  log "Set REPO_PATH to a git clone (e.g., /home/mor/codex-ai-exe)."
+  exit 2
 fi
 
 if [[ -z "$REPO_PATH" || -z "$GITHUB_TOKEN" || -z "$GITHUB_REPO" ]]; then
