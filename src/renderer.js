@@ -14,6 +14,7 @@ const startImprove = document.getElementById("startImprove");
 const toggleRtl = document.getElementById("toggleRtl");
 const fontDown = document.getElementById("fontDown");
 const fontUp = document.getElementById("fontUp");
+const healthCheck = document.getElementById("healthCheck");
 const dangerModal = document.getElementById("dangerModal");
 const dangerText = document.getElementById("dangerText");
 const dangerAllow = document.getElementById("dangerAllow");
@@ -527,6 +528,13 @@ if (startImprove) {
   });
 }
 
+if (healthCheck) {
+  healthCheck.addEventListener("click", () => {
+    appendMessage("ai", "בודק מערכת...", "Info");
+    window.api.healthCheck();
+  });
+}
+
 window.api.onImproveLog((msg) => {
   if (msg) {
     appendMessage("ai", msg.trim(), "לוג");
@@ -536,6 +544,12 @@ window.api.onImproveLog((msg) => {
 window.api.onImproveDone((msg) => {
   if (msg) {
     appendMessage("ai", msg, "בוצע");
+  }
+});
+
+window.api.onHealthResult((msg) => {
+  if (msg) {
+    appendMessage("ai", msg, "סטטוס");
   }
 });
 

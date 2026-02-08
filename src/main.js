@@ -4,6 +4,7 @@ const pty = require("node-pty");
 const { spawn } = require("child_process");
 const { autoUpdater } = require("electron-updater");
 const fs = require("fs");
+const { existsSync } = require("fs");
 
 let mainWindow = null;
 let ptyProcess = null;
@@ -190,6 +191,39 @@ ipcMain.on("terminal:resize", (_event, size) => {
   }
 });
 
+ipcMain.on("health:check", (event) => {
+  const token = process.env.GITHUB_TOKEN || "";
+  const repoPath = process.env.REPO_PATH || app.getAppPath();
+  const repoWsl = toWslPath(repoPath);
+  const checks = [];
+
+  checks.push(`GITHUB_TOKEN: ${token ? "OK" : "MISSING"}`);
+  checks.push(`REPO_PATH: ${repoPath}`);
+  checks.push(`REPO_WSL: ${repoWsl || "INVALID"}`);
+
+  const scriptPath = ensureImproveScript();
+  checks.push(`improve.sh: ${existsSync(scriptPath) ? "OK" : "MISSING"}`);
+
+  const cmd = [
+    "command -v gh >/dev/null 2>&1 && echo 'gh: OK' || echo 'gh: MISSING'",
+    "command -v codex >/dev/null 2>&1 && echo 'codex: OK' || echo 'codex: MISSING'",
+    "wsl.exe -l -q | head -n 1 >/dev/null 2>&1 && echo 'WSL: OK' || echo 'WSL: MISSING'"
+  ].join(" ; ");
+
+  try {
+    const child = spawn("wsl.exe", ["-e", "bash", "-lc", cmd], { env: process.env });
+    let out = "";
+    child.stdout.on("data", (d) => (out += d.toString()));
+    child.stderr.on("data", (d) => (out += d.toString()));
+    child.on("close", () => {
+      const result = `${checks.join("\\n")}\\n${out.trim()}`;
+      event.sender.send("health:result", result);
+    });
+  } catch (err) {
+    event.sender.send("health:result", `${checks.join("\\n")}\\nWSL: ERROR ${err.message}`);
+  }
+});
+
 ipcMain.on("improve:start", (event, payload) => {
   const iterations = Number(payload?.iterations || 5);
   const repoWinPath = process.env.REPO_PATH || app.getAppPath();
@@ -212,17 +246,20 @@ ipcMain.on("improve:start", (event, payload) => {
   }
 
   const cmd = [
-    `REPO_PATH=${escapeShell(repoWslPath)}`,
-    `GITHUB_REPO=${escapeShell("mordechimenaker-create/codex-ai-exe")}`,
-    `MAX_ITERATIONS=${iterations}`,
-    "AUTO_MERGE=1",
+    `export REPO_PATH=${escapeShell(repoWslPath)}`,
+    `export GITHUB_REPO=${escapeShell("mordechimenaker-create/codex-ai-exe")}`,
+    `export GITHUB_TOKEN=${escapeShell(token)}`,
+    `export MAX_ITERATIONS=${iterations}`,
+    "export AUTO_MERGE=1",
     `bash ${escapeShell(toWslPath(scriptPath))}`
   ].join(" ");
 
   const env = {
     ...process.env,
     GITHUB_TOKEN: token,
-    WSLENV: appendWslenv(process.env.WSLENV, "GITHUB_TOKEN/p")
+    REPO_PATH: repoWinPath,
+    GITHUB_REPO: "mordechimenaker-create/codex-ai-exe",
+    WSLENV: appendWslenv(process.env.WSLENV, "GITHUB_TOKEN/p:REPO_PATH/p:GITHUB_REPO/p")
   };
   const child = spawn("wsl.exe", ["-e", "bash", "-lc", cmd], { env });
 

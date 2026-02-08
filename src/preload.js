@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("api", {
   startImprove: (iterations) => ipcRenderer.send("improve:start", { iterations }),
   onImproveLog: (callback) => ipcRenderer.on("improve:log", (_event, msg) => callback(msg)),
   onImproveDone: (callback) => ipcRenderer.on("improve:done", (_event, msg) => callback(msg)),
+  healthCheck: () => ipcRenderer.send("health:check"),
+  onHealthResult: (callback) => ipcRenderer.on("health:result", (_event, msg) => callback(msg)),
   terminalWrite: (data) => ipcRenderer.send("terminal:write", data),
   terminalResize: (cols, rows) => ipcRenderer.send("terminal:resize", { cols, rows }),
   onTerminalData: (callback) => ipcRenderer.on("terminal:data", (_event, data) => callback(data))
