@@ -183,7 +183,11 @@ ipcMain.on("terminal:resize", (_event, size) => {
 ipcMain.on("improve:start", (event, payload) => {
   const iterations = Number(payload?.iterations || 5);
   const repoWinPath = process.env.REPO_PATH || app.getAppPath();
-  const repoWslPath = toWslPath(repoWinPath);
+  let repoWslPath = toWslPath(repoWinPath);
+  if (!repoWslPath) {
+    const fallbackWin = "C:\\codex-ai-exe";
+    repoWslPath = toWslPath(fallbackWin);
+  }
   const scriptPath = ensureImproveScript();
 
   if (!repoWslPath) {
@@ -275,7 +279,7 @@ function toWslPath(winPath) {
     return "";
   }
   const drive = match[1].toLowerCase();
-  const rest = match[2].replace(/\\\\/g, "/");
+  const rest = match[2].replace(/\\/g, "/");
   return `/mnt/${drive}/${rest}`;
 }
 
