@@ -216,11 +216,11 @@ ipcMain.on("health:check", (event) => {
     child.stdout.on("data", (d) => (out += d.toString()));
     child.stderr.on("data", (d) => (out += d.toString()));
     child.on("close", () => {
-      const result = `${checks.join("\\n")}\\n${out.trim()}`;
+      const result = `${checks.join("\n")}\n${out.trim()}`;
       event.sender.send("health:result", result);
     });
   } catch (err) {
-    event.sender.send("health:result", `${checks.join("\\n")}\\nWSL: ERROR ${err.message}`);
+    event.sender.send("health:result", `${checks.join("\n")}\nWSL: ERROR ${err.message}`);
   }
 });
 
@@ -252,7 +252,7 @@ ipcMain.on("improve:start", (event, payload) => {
     `export MAX_ITERATIONS=${iterations}`,
     "export AUTO_MERGE=1",
     `bash ${escapeShell(toWslPath(scriptPath))}`
-  ].join(" ");
+  ].join(" ; ");
 
   const env = {
     ...process.env,
