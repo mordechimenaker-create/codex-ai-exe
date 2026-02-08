@@ -37,7 +37,7 @@ if [[ -z "$REPO_PATH" ]]; then
   fi
 fi
 
-if [[ -n "$REPO_PATH" && ! $(is_git_repo "$REPO_PATH") ]]; then
+if [[ -n "$REPO_PATH" ]] && ! is_git_repo "$REPO_PATH"; then
   log "REPO_PATH is not a git repo: $REPO_PATH"
   log "Set REPO_PATH to a git clone (e.g., /home/mor/codex-ai-exe)."
   exit 2
@@ -65,12 +65,22 @@ fi
 
 git -C "$REPO_PATH" fetch origin "$BASE_BRANCH" >/dev/null 2>&1 || true
 
-git -C "$REPO_PATH" diff --quiet || {
-  log "Repo has uncommitted changes; aborting."
-  exit 2
-}
+if git -C "$REPO_PATH" status --porcelain | grep -q .; then
+  log "Repo has uncommitted changes. Stashing..."
+  git -C "$REPO_PATH" stash push -u -m "auto-improve-stash" >/dev/null 2>&1 || true
+  STASHED=1
+else
+  STASHED=0
+fi
 
 git -C "$REPO_PATH" checkout "$BASE_BRANCH" >/dev/null 2>&1
+
+if ! git -C "$REPO_PATH" remote get-url origin >/dev/null 2>&1; then
+  git -C "$REPO_PATH" remote add origin "https://github.com/$GITHUB_REPO.git" >/dev/null 2>&1 || true
+fi
+
+git -C "$REPO_PATH" config user.name >/dev/null 2>&1 || git -C "$REPO_PATH" config user.name "codex-ai-bot"
+git -C "$REPO_PATH" config user.email >/dev/null 2>&1 || git -C "$REPO_PATH" config user.email "codex-ai-bot@users.noreply.github.com"
 
 gh auth status -t >/dev/null 2>&1 || gh auth login --with-token <<<"$GITHUB_TOKEN" >/dev/null 2>&1 || true
 
@@ -126,6 +136,11 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
 
   git -C "$REPO_PATH" checkout "$BASE_BRANCH" >/dev/null 2>&1
 done
+
+if [[ "$STASHED" == "1" ]]; then
+  log "Restoring stashed changes..."
+  git -C "$REPO_PATH" stash pop >/dev/null 2>&1 || true
+fi
 
 log "Done."
 `;
@@ -328,6 +343,9 @@ function buildCodexCommand(prompt, history) {
 function toWslPath(winPath) {
   if (!winPath) {
     return "";
+  }
+  if (winPath.startsWith("/")) {
+    return winPath;
   }
   const normalized = winPath.replace(/\//g, "\\");
   if (normalized.startsWith("\\\\")) {
