@@ -6,7 +6,12 @@ const sendBtn = document.getElementById("send");
 const clearBtn = document.getElementById("clearChat");
 const statusLine = document.getElementById("statusLine");
 const statusMeta = document.getElementById("statusMeta");
+const statusText = document.getElementById("statusText");
+const statusDot = document.getElementById("statusDot");
 const cmdHistoryEl = document.getElementById("cmdHistory");
+const chatEmpty = document.getElementById("chatEmpty");
+const historyEmpty = document.getElementById("historyEmpty");
+const scrollToLatest = document.getElementById("scrollToLatest");
 const toggleTheme = document.getElementById("toggleTheme");
 const toggleDensity = document.getElementById("toggleDensity");
 const jumpTerminal = document.getElementById("jumpTerminal");
@@ -27,7 +32,7 @@ const consentDecline = document.getElementById("consentDecline");
 const terminal = new window.Terminal({
   cursorBlink: true,
   scrollback: 5000,
-  fontFamily: "Consolas, 'Fira Code', monospace",
+  fontFamily: "JetBrains Mono, Consolas, 'Fira Code', monospace",
   fontSize: 13,
   theme: {
     background: "#0c0d10",
@@ -72,9 +77,15 @@ window.api.onTerminalData((data) => {
   }
 });
 
+let resizeTimer = null;
 window.addEventListener("resize", () => {
-  fitAddon.fit();
-  window.api.terminalResize(terminal.cols, terminal.rows);
+  if (resizeTimer) {
+    clearTimeout(resizeTimer);
+  }
+  resizeTimer = setTimeout(() => {
+    fitAddon.fit();
+    window.api.terminalResize(terminal.cols, terminal.rows);
+  }, 120);
 });
 
 function appendMessage(role, text, status) {
@@ -98,12 +109,29 @@ function appendMessage(role, text, status) {
   wrapper.appendChild(label);
   wrapper.appendChild(body);
   chatEl.appendChild(wrapper);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  if (shouldAutoScroll()) {
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+  updateEmptyStates();
+  updateScrollButton();
   return wrapper;
 }
 
 function setStatus(text) {
-  if (statusLine) {
+  if (!statusLine) {
+    return;
+  }
+  const normalized = String(text || "").toLowerCase();
+  let state = "ok";
+  if (normalized.includes("שגיאה") || normalized.includes("error")) {
+    state = "error";
+  } else if (normalized.includes("חושב") || normalized.includes("running") || normalized.includes("מתחיל")) {
+    state = "busy";
+  }
+  statusLine.setAttribute("data-state", state);
+  if (statusText) {
+    statusText.textContent = text;
+  } else {
     statusLine.textContent = text;
   }
 }
@@ -140,6 +168,34 @@ function setFontSize(size) {
   const clamped = Math.min(FONT_MAX, Math.max(FONT_MIN, size));
   localStorage.setItem("fontSize", String(clamped));
   applyFontSize(clamped);
+}
+
+function updateEmptyStates() {
+  if (chatEmpty) {
+    if (!chatEl.contains(chatEmpty)) {
+      chatEl.prepend(chatEmpty);
+    }
+    const hasMessages = Array.from(chatEl.children).some((child) => child.id !== "chatEmpty");
+    chatEmpty.classList.toggle("hidden", hasMessages);
+  }
+  if (historyEmpty) {
+    historyEmpty.classList.toggle("hidden", commandHistory.length > 0);
+  }
+}
+
+function shouldAutoScroll() {
+  if (!chatEl) {
+    return true;
+  }
+  const threshold = 40;
+  return chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < threshold;
+}
+
+function updateScrollButton() {
+  if (!scrollToLatest) {
+    return;
+  }
+  scrollToLatest.classList.toggle("hidden", shouldAutoScroll());
 }
 
 const history = [];
@@ -181,8 +237,18 @@ async function sendPrompt() {
   window.api.sendPrompt(id, prompt, context);
 }
 
+let composing = false;
 sendBtn.addEventListener("click", sendPrompt);
+inputEl.addEventListener("compositionstart", () => {
+  composing = true;
+});
+inputEl.addEventListener("compositionend", () => {
+  composing = false;
+});
 inputEl.addEventListener("keydown", (e) => {
+  if (composing) {
+    return;
+  }
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendPrompt();
@@ -313,6 +379,7 @@ function recordCommand(command) {
     commandHistory.pop();
   }
   renderCommandHistory();
+  updateEmptyStates();
 }
 
 function renderCommandHistory() {
@@ -380,7 +447,10 @@ window.api.onAiChunk(({ id, chunk }) => {
   if (body) {
     body.textContent = entry.text;
   }
-  chatEl.scrollTop = chatEl.scrollHeight;
+  if (shouldAutoScroll()) {
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+  updateScrollButton();
 });
 
 window.api.onAiDone(({ id, text, error }) => {
@@ -439,17 +509,19 @@ if (clearBtn) {
   clearBtn.addEventListener("click", () => {
     chatEl.innerHTML = "";
     history.splice(0, history.length);
+    updateEmptyStates();
     setStatus("נוקה");
     setTimeout(() => setStatus("מוכן"), 800);
   });
 }
 
 function saveSession() {
-  sessionStorage.setItem("chatHistory", JSON.stringify(history));
+  localStorage.setItem("chatHistory", JSON.stringify(history));
+  localStorage.setItem("commandHistory", JSON.stringify(commandHistory));
 }
 
 function restoreSession() {
-  const raw = sessionStorage.getItem("chatHistory");
+  const raw = localStorage.getItem("chatHistory");
   if (!raw) {
     return;
   }
@@ -470,6 +542,19 @@ function restoreSession() {
 
 window.addEventListener("beforeunload", saveSession);
 restoreSession();
+try {
+  const rawCommands = localStorage.getItem("commandHistory");
+  if (rawCommands) {
+    const items = JSON.parse(rawCommands);
+    if (Array.isArray(items)) {
+      commandHistory.push(...items.slice(0, MAX_COMMAND_HISTORY));
+      renderCommandHistory();
+    }
+  }
+} catch (_err) {
+  // ignore
+}
+updateEmptyStates();
 setStatus("מוכן");
 
 if (toggleTheme) {
@@ -587,6 +672,19 @@ quickButtons.forEach((btn) => {
     sendPrompt();
   });
 });
+
+if (scrollToLatest) {
+  scrollToLatest.addEventListener("click", () => {
+    chatEl.scrollTop = chatEl.scrollHeight;
+    updateScrollButton();
+  });
+}
+
+if (chatEl) {
+  chatEl.addEventListener("scroll", () => {
+    updateScrollButton();
+  });
+}
 
 document.addEventListener("keydown", (event) => {
   if (!event.ctrlKey) {

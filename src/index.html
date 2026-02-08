@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,7 +12,10 @@
       <header class="header">
         <div class="title">Codex AI Terminal</div>
         <div class="subtitle">צ'אט למעלה, טרמינל WSL למטה</div>
-        <div class="status" id="statusLine">מוכן</div>
+        <div class="status" id="statusLine" role="status" aria-live="polite">
+          <span class="dot" id="statusDot" aria-hidden="true"></span>
+          <span id="statusText">מוכן</span>
+        </div>
         <div class="status meta" id="statusMeta">WSL: לא ידוע · --:--</div>
         <div class="actions">
           <button id="toggleTheme" class="ghost">ערכת צבע</button>
@@ -28,7 +31,12 @@
 
       <section class="chat-panel">
         <div class="chat-row">
-          <div id="chat" class="chat"></div>
+          <div class="chat-shell">
+            <div id="chat" class="chat" role="log" aria-live="polite" aria-relevant="additions text">
+              <div id="chatEmpty" class="empty">התחל שיחה חדשה כדי לקבל פקודות והסברים.</div>
+            </div>
+            <button id="scrollToLatest" class="ghost scroll-latest hidden" aria-label="Scroll to latest">למטה</button>
+          </div>
           <aside class="side-panel">
             <div class="side-title">פעולות מהירות</div>
             <div class="quick-actions">
@@ -38,6 +46,7 @@
               <button class="ghost quick" data-task="בדוק חיבור אינטרנט ופתרון בעיות DNS">בדיקת רשת</button>
             </div>
             <div class="side-title">היסטוריית פקודות</div>
+            <div id="historyEmpty" class="empty small">אין עדיין פקודות.</div>
             <div id="cmdHistory" class="side-list"></div>
           </aside>
         </div>
