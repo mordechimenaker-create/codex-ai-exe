@@ -48,6 +48,11 @@ if [[ -z "$REPO_PATH" || -z "$GITHUB_TOKEN" || -z "$GITHUB_REPO" ]]; then
   exit 2
 fi
 
+if [[ ! -d "$REPO_PATH" ]]; then
+  log "REPO_PATH does not exist: $REPO_PATH"
+  exit 2
+fi
+
 if ! command -v git >/dev/null 2>&1; then
   log "git not found"
   exit 2
@@ -92,12 +97,15 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
 
   prompt="Improve the Electron app (UI/UX/robustness). Return a unified diff ONLY. No explanations."
   diff_file=$(mktemp)
+  pushd "$REPO_PATH" >/dev/null 2>&1
   if ! codex exec --skip-git-repo-check "$prompt" >"$diff_file"; then
     log "Codex exec failed"
+    popd >/dev/null 2>&1 || true
     git -C "$REPO_PATH" checkout "$BASE_BRANCH" >/dev/null 2>&1
     git -C "$REPO_PATH" branch -D "$branch" >/dev/null 2>&1 || true
     exit 2
   fi
+  popd >/dev/null 2>&1 || true
 
   if [[ ! -s "$diff_file" ]]; then
     log "No diff returned. Stopping."
@@ -253,15 +261,12 @@ ipcMain.on("health:check", (event) => {
 
 ipcMain.on("improve:start", (event, payload) => {
   const iterations = Number(payload?.iterations || 5);
-  const repoWinPath = process.env.REPO_PATH || app.getAppPath();
-  let repoWslPath = toWslPath(repoWinPath);
-  if (!repoWslPath) {
-    const fallbackWin = "C:\\codex-ai-exe";
-    repoWslPath = toWslPath(fallbackWin);
-  }
+  const repoWinPath = process.env.REPO_PATH || "";
+  const repoWslPath = resolveRepoWslPath();
   const scriptPath = ensureImproveScript();
+  const scriptWslPath = toWslPath(scriptPath);
 
-  if (!repoWslPath) {
+  if (!repoWslPath || !scriptWslPath) {
     event.sender.send("improve:done", "Missing REPO_PATH. Set REPO_PATH to a Windows path like C:\\\\codex-ai-exe.");
     return;
   }
@@ -272,21 +277,16 @@ ipcMain.on("improve:start", (event, payload) => {
     return;
   }
 
-  const cmd = [
-    `export REPO_PATH=${escapeShell(repoWslPath)}`,
-    `export GITHUB_REPO=${escapeShell("mordechimenaker-create/codex-ai-exe")}`,
-    `export GITHUB_TOKEN=${escapeShell(token)}`,
-    `export MAX_ITERATIONS=${iterations}`,
-    "export AUTO_MERGE=1",
-    `bash ${escapeShell(toWslPath(scriptPath))}`
-  ].join(" ; ");
+  const cmd = buildImproveCommand(repoWslPath, scriptWslPath, token, iterations);
 
   const env = {
     ...process.env,
     GITHUB_TOKEN: token,
     REPO_PATH: repoWinPath,
     GITHUB_REPO: "mordechimenaker-create/codex-ai-exe",
-    WSLENV: appendWslenv(process.env.WSLENV, "GITHUB_TOKEN/p:REPO_PATH/p:GITHUB_REPO/p")
+    MAX_ITERATIONS: String(iterations),
+    AUTO_MERGE: "1",
+    WSLENV: appendWslenv(process.env.WSLENV, "GITHUB_TOKEN:REPO_PATH:GITHUB_REPO:MAX_ITERATIONS:AUTO_MERGE")
   };
   const child = spawn("wsl.exe", ["-e", "bash", "-lc", cmd], { env });
 
@@ -373,6 +373,33 @@ function appendWslenv(current, entry) {
     return current;
   }
   return `${current}:${entry}`;
+}
+
+function resolveRepoWslPath() {
+  const envRepo = process.env.REPO_PATH || "";
+  const wslFromEnv = toWslPath(envRepo);
+  if (wslFromEnv) {
+    return wslFromEnv;
+  }
+  const candidates = ["/home/mor/codex-ai-exe", "/mnt/c/codex-ai-exe"];
+  for (const candidate of candidates) {
+    if (candidate) {
+      return candidate;
+    }
+  }
+  return "";
+}
+
+function buildImproveCommand(repoWslPath, scriptWslPath, token, iterations) {
+  const parts = [
+    `REPO_PATH=${escapeShell(repoWslPath)}`,
+    `GITHUB_REPO=${escapeShell("mordechimenaker-create/codex-ai-exe")}`,
+    `GITHUB_TOKEN=${escapeShell(token)}`,
+    `MAX_ITERATIONS=${iterations}`,
+    "AUTO_MERGE=1",
+    `bash ${escapeShell(scriptWslPath)}`
+  ];
+  return parts.join(" ");
 }
 
 function ensureImproveScript() {
