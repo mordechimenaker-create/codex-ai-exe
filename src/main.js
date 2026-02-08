@@ -20,6 +20,16 @@ AUTO_MERGE=\${AUTO_MERGE:-"1"}
 
 log() { printf "%s\\n" "$*"; }
 
+if [[ -z "$REPO_PATH" ]]; then
+  if [[ -d "/mnt/c/codex-ai-exe" ]]; then
+    REPO_PATH="/mnt/c/codex-ai-exe"
+  fi
+fi
+
+if [[ -z "$GITHUB_REPO" ]]; then
+  GITHUB_REPO="mordechimenaker-create/codex-ai-exe"
+fi
+
 if [[ -z "$REPO_PATH" || -z "$GITHUB_TOKEN" || -z "$GITHUB_REPO" ]]; then
   log "Missing REPO_PATH/GITHUB_TOKEN/GITHUB_REPO"
   exit 2
