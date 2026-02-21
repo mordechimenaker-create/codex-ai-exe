@@ -99,6 +99,8 @@ GitHub Actions builds and publishes release assets.
 
 - `x509: certificate signed by unknown authority` during packaging:
   - use `npm run pack:offline`
+- `Update error ... Bad credentials` (401):
+  - remove stale `GH_TOKEN` from environment and restart the app
 - WSL terminal not opening:
   - verify `wsl.exe -l -q` works on host
 - Improve button fails immediately:

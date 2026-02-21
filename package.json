@@ -1,6 +1,6 @@
 {
   "name": "codex-ai-terminal",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Electron GUI: AI chat on top, WSL terminal below",
   "main": "src/main.js",
   "author": "",
@@ -39,7 +39,7 @@
         "provider": "github",
         "owner": "mordechimenaker-create",
         "repo": "codex-ai-exe",
-        "private": true
+        "private": false
       }
     ]
   }

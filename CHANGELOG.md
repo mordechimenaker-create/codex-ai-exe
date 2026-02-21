@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.14] - 2026-02-21
+
+### Fixed
+- Auto-updater now targets public GitHub release flow (`publish.private=false`).
+- Auto-updater now ignores `GH_TOKEN` at runtime to prevent `401 Bad credentials` on public release checks.
+- Improved updater error message for GitHub credential mismatch.
+
 ## [0.1.13] - 2026-02-21
 
 ### Fixed

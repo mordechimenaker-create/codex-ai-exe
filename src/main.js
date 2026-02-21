@@ -514,6 +514,10 @@ function sendWslStatus() {
 }
 
 function setupAutoUpdates() {
+  // Public GitHub releases do not require GH_TOKEN; an invalid token causes 401.
+  if (process.env.GH_TOKEN) {
+    delete process.env.GH_TOKEN;
+  }
   autoUpdater.autoDownload = true;
   autoUpdater.on("checking-for-update", () => {
     mainWindow?.webContents.send("app:warning", "Checking for updates...");
@@ -525,7 +529,15 @@ function setupAutoUpdates() {
     mainWindow?.webContents.send("app:warning", "No updates available.");
   });
   autoUpdater.on("error", (err) => {
-    mainWindow?.webContents.send("app:warning", `Update error: ${err?.message || err}`);
+    const message = `${err?.message || err || ""}`;
+    if (message.includes("Bad credentials") || message.includes("status\":\"401")) {
+      mainWindow?.webContents.send(
+        "app:warning",
+        "Update error: GitHub token invalid for updater (401). Remove GH_TOKEN from app environment and retry."
+      );
+      return;
+    }
+    mainWindow?.webContents.send("app:warning", `Update error: ${message}`);
   });
   autoUpdater.on("update-downloaded", () => {
     mainWindow?.webContents.send("app:warning", "Update downloaded. Restarting...");
