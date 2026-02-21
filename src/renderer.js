@@ -454,6 +454,7 @@ window.api.onAiChunk(({ id, chunk }) => {
 });
 
 window.api.onAiDone(({ id, text, error }) => {
+  const hadError = Boolean(error);
   const entry = pendingResponses.get(id);
   if (entry) {
     const finalText = error || text || "(no output)";
@@ -485,7 +486,7 @@ window.api.onAiDone(({ id, text, error }) => {
     setStatus("שגיאה");
   }
   sendBtn.disabled = false;
-  if (statusLine && statusLine.textContent === "Error") {
+  if (hadError) {
     setTimeout(() => setStatus("מוכן"), 1500);
   } else {
     setStatus("מוכן");
