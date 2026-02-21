@@ -1,83 +1,118 @@
 # Codex AI Terminal
 
-Electron GUI for Windows 10: AI chat on top (Codex CLI via WSL), WSL bash terminal below.
+Desktop Electron app for Windows + WSL:
+- AI assistant chat in the top panel
+- Real WSL terminal in the bottom panel
+- Command extraction and optional auto-run flow
 
-## Prereqs
+## Features
 
-- Windows 10 with WSL installed
-- Node.js (LTS) and npm
-- WSL with `npm` available (for auto-installing Codex CLI)
+- WSL PTY terminal integration (`node-pty` + `xterm`)
+- AI prompt flow using `codex exec` in WSL
+- Command safety flow:
+  - consent modal for auto-run
+  - extra confirmation for dangerous commands
+- One-click health check for `gh` / `codex` / WSL readiness
+- "Improve x5" automation loop (branch -> PR -> optional auto-merge)
+- Auto-update support through GitHub Releases (`electron-updater`)
 
-## Install
+## Requirements
+
+- Windows 10/11 with WSL installed and working
+- Node.js LTS + npm
+- In WSL: `bash`, `git`, `npm`
+
+For improve loop:
+- `gh` (GitHub CLI) in WSL
+- `GITHUB_TOKEN` with repository permissions
+
+## Quick Start
 
 ```bash
-cd /home/mor/codex-ai-exe
+git clone https://github.com/mordechimenaker-create/codex-ai-exe.git
+cd codex-ai-exe
 npm install
-```
-
-## Run (dev)
-
-```bash
 npm start
 ```
 
-## Build EXE
+## Build
+
+Development package directory:
+
+```bash
+npm run pack
+```
+
+Full distributables (including installer):
 
 ```bash
 npm run dist
 ```
 
-The installer will be in `dist/`.
+Outputs are under `dist/`.
 
-## Build (Offline Cache Mode)
+## Offline Build (TLS/Proxy Friendly)
 
-If your environment blocks TLS interception for Electron downloads, use:
+If your environment blocks Electron downloads via TLS interception:
 
 ```bash
 npm run pack:offline
 ```
 
-This command reuses the local Electron cache from `~/.cache/electron` and avoids downloading Electron again.
+This command uses the local Electron cache (`~/.cache/electron`) and avoids network download during packaging.
 
-## Notes
+## Environment Variables
 
-- The app spawns WSL via `wsl.exe -e bash -l`.
-- AI responses run `codex exec` inside WSL.
-- If Codex is missing, the app runs `npm install -g @openai/codex` inside WSL.
-- Non-interactive usage uses `codex exec`.
-- Optional: set `WSL_DISTRO` to target a specific distro (otherwise the default WSL distro is used).
+Runtime:
+- `WSL_DISTRO`: target a specific WSL distro
+- `ALLOW_INSECURE_CERTS=1`: ignore cert errors in Electron (debug only)
+- `DISABLE_GPU=1`: disable GPU acceleration (troubleshooting)
 
-## Auto-Update (GitHub Releases)
+Improve loop:
+- `GITHUB_TOKEN`: required for PR flow
+- `REPO_PATH`: Windows path to repo, e.g. `C:\codex-ai-exe`
 
-This repo is configured for auto-updates using GitHub Releases.
+## Auto-Improve Loop
 
-1. Create a git tag and push it:
+The "Improve x5" button runs up to 5 iterations:
+1. Generate patch with Codex CLI.
+2. Apply and commit.
+3. Push branch and open PR.
+4. Request auto-merge (if available).
+
+The loop stops on failure and attempts safe rollback behavior.
+
+## Release Flow
+
+Tag-based release workflow is configured in `.github/workflows/release.yml`.
+
+Create and push a tag:
 
 ```bash
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.12
+git push origin v0.1.12
 ```
 
-2. GitHub Actions will build and publish a release automatically.
-3. The app checks for updates on startup and installs them.
+GitHub Actions builds and publishes release assets.
 
-## Auto-Improve Loop (Button)
+## Troubleshooting
 
-The app includes an “Improve x5” button that runs a **max 5 iteration** loop:
+- `x509: certificate signed by unknown authority` during packaging:
+  - use `npm run pack:offline`
+- WSL terminal not opening:
+  - verify `wsl.exe -l -q` works on host
+- Improve button fails immediately:
+  - run health check in app
+  - confirm `GITHUB_TOKEN`, `gh auth status`, and repo access
 
-1. Uses Codex CLI to generate a unified diff.
-2. Applies it, commits, pushes a branch.
-3. Opens a PR and attempts auto-merge (if enabled).
-4. CI builds a new EXE and the app auto-updates.
+## Project Structure
 
-### Requirements (WSL)
+- `src/main.js`: Electron main process + WSL bridge + updater + improve runner
+- `src/preload.js`: secure IPC bridge
+- `src/renderer.js`: UI logic and command handling
+- `scripts/improve.sh`: improve loop script
+- `scripts/pack-offline.sh`: offline packaging helper
 
-- `git`, `gh` (GitHub CLI), `codex` available in WSL
-- `GITHUB_TOKEN` environment variable set (with repo access)
-- Optional: set `REPO_PATH` to the Windows path of the repo (e.g., `C:\codex-ai-exe`)
+## Contributing
 
-### Notes
-
-- The loop stops on any failure.
-- It will not proceed if the repo has uncommitted changes.
-- The app stores `improve.sh` in the user data directory when packaged.
+See `CONTRIBUTING.md`.
