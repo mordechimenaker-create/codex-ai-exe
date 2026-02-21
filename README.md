@@ -29,6 +29,16 @@ npm run dist
 
 The installer will be in `dist/`.
 
+## Build (Offline Cache Mode)
+
+If your environment blocks TLS interception for Electron downloads, use:
+
+```bash
+npm run pack:offline
+```
+
+This command reuses the local Electron cache from `~/.cache/electron` and avoids downloading Electron again.
+
 ## Notes
 
 - The app spawns WSL via `wsl.exe -e bash -l`.

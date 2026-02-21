@@ -8,6 +8,7 @@
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
+    "pack:offline": "bash ./scripts/pack-offline.sh",
     "dist": "electron-builder"
   },
   "dependencies": {
