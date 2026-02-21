@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.13] - 2026-02-21
+
+### Fixed
+- Corrected release version alignment so GitHub Actions publishes assets to the matching tag.
+- Release workflow now produces EXE assets for the latest tag flow.
+
 ## [0.1.11] - 2026-02-21
 
 ### Added
